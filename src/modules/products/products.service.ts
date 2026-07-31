@@ -38,8 +38,27 @@ export class ProductsService {
     return productsWithCategory;
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} product`;
+  async findOne() {
+    // 1ª Consulta (O "1" do N+1): Busca todos os produtos do banco
+    const products = await this.productRepository.find();
+
+    // Consultas extras (O "N" do N+1):
+    // Para cada produto da lista, o código faz um novo SELECT individual no banco
+    const productsWithCategory = await Promise.all(
+      products.map(async (product) => {
+        // Dispara uma query por produto: SELECT * FROM category WHERE id = product.categoryId
+        const category = await this.categoryRepository.findOne({
+          where: { id: product.categoryId },
+        });
+
+        return {
+          ...product,
+          category, // Anexa a categoria ao produto
+        };
+      }),
+    );
+
+    return productsWithCategory;
   }
 
   update(id: number, updateProductDto: UpdateProductDto) {
